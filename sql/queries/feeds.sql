@@ -6,7 +6,7 @@ INSERT INTO feeds (id, created_at, updated_at, name,url,user_id)
 -- name: GetFeeds :many
  SELECT * from feeds;
 
--- name: GetNextFeedToFetch :many
+-- name: GetNextFeedsToFetch :many
 SELECT * from feeds
 ORDER BY last_fetched_at ASC NULLS FIRST
 LIMIT $1;

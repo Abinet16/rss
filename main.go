@@ -17,10 +17,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-
 type apiConfig struct {
 	DB *database.Queries
 }
+
 func main() {
 	// fmt.Println("Hello, World!")
 	feed, err := urlToFeed("https://wagslane.dev/index.xml")
@@ -29,14 +29,13 @@ func main() {
 	}
 	fmt.Println(feed)
 
-	godotenv.Load(".env")
-	
+	godotenv.Load()
+
 	portString := os.Getenv("PORT")
 	if portString == "" {
 		log.Fatal("PORT environment variable not set")
 	}
 
-	
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		log.Fatal("DB_URL environment variable not set")
@@ -46,22 +45,22 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}
-  var version string
-err = conn.QueryRow("SELECT version();").Scan(&version)
-if err != nil {
-    log.Fatal("Database did not accept SELECT version(); ", err)
-}
+	var version string
+	err = conn.QueryRow("SELECT version();").Scan(&version)
+	if err != nil {
+		log.Fatal("Database did not accept SELECT version(); ", err)
+	}
 
-log.Println("Connected to:", version)
+	log.Println("Connected to:", version)
 
-	 db := database.New(conn)
+	db := database.New(conn)
 
 	apiCfg := apiConfig{
 		DB: db,
 	}
 
 	go startScraping(db, 10, time.Minute)
-  
+
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
@@ -75,17 +74,15 @@ log.Println("Connected to:", version)
 
 	v1Router := chi.NewRouter()
 	v1Router.Get("/health", handlerReadiness)
-	v1Router.Get("/err",handleErr)
+	v1Router.Get("/err", handleErr)
 	v1Router.Post("/users", apiCfg.handlerCreateUser)
-	v1Router.Get("/users",apiCfg.middlewareAuth(apiCfg.handlerGetUser))
+	v1Router.Get("/users", apiCfg.middlewareAuth(apiCfg.handlerGetUser))
 	v1Router.Post("/feeds", apiCfg.middlewareAuth(apiCfg.handlerCreateFeed))
 	v1Router.Get("/feeds", apiCfg.handlerGetFeeds)
-	v1Router.Post("/feed_follows",apiCfg.middlewareAuth(apiCfg.handlerCreateFeedFollow))
-	v1Router.Get("/feed_follows",apiCfg.middlewareAuth(apiCfg.handlerGetFeedFollows))
-	v1Router.Delete("/feed_follows/{feedFollowID}",apiCfg.middlewareAuth(apiCfg.handlerDeleteFeedFollows))
-	
-	
-	
+	v1Router.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.handlerCreateFeedFollow))
+	v1Router.Get("/feed_follows", apiCfg.middlewareAuth(apiCfg.handlerGetFeedFollows))
+	v1Router.Delete("/feed_follows/{feedFollowID}", apiCfg.middlewareAuth(apiCfg.handlerDeleteFeedFollows))
+	v1Router.Get("/posts", apiCfg.middlewareAuth(apiCfg.handlerGetPostsForUser))
 	router.Mount("/v1", v1Router)
 
 	srv := &http.Server{
